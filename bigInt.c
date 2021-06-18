@@ -23,23 +23,20 @@ bigInt* bigIntLen(uint64_t l)
 {
 	//allocate new bigint
 	bigInt *b = (bigInt*) malloc(sizeof(bigInt));
-	uint64_t i;
 	if(!b)
 	{
 		printf("Out of memory!\n");
 		return NULL;
 	}
-	//allocate new int array
-	b->n = (uint64_t*) malloc(sizeof(uint64_t) * l);
+	//Allocate new int array of 0s
+	b->n = (uint64_t*) calloc(l, sizeof(uint64_t));
 	if(!b->n)
 	{
 		printf("Out of memory!\n");
-		free(b)
+		free(b);
 		return NULL;
 	}
-	//Set new bigInt to 0
-	for(i = 0; i < l; i++)
-		b->n[i] = 0;
+	//Finish setting new bigInt to 0
 	b->l = l;
 	b->s = 0x00;
 	return b;
@@ -98,7 +95,7 @@ bigInt* strToBI(char *s)
 	//calculate array length and create BI; Check for failed allocation
 	b = bigIntLen((c - sh) / DIGITS + ((c - sh) % DIGITS ? 1 : 0));
 	if(!b) return NULL;
-	b->s = (sh && s[0] == "-") ? 0xFF : 0x00;	//Set sign
+	b->s = (sh && s[0] == '-') ? 0xFF : 0x00;	//Set sign
 	uint64_t d;	//digit counter
 	uint64_t o = c - sh;	//offset count
 	uint64_t m = 1;	//digit multiplier
@@ -114,7 +111,7 @@ bigInt* strToBI(char *s)
 }
 
 //Returns duplicate of provided bigInt
-bigInt* copyBI(const bigInt *a)
+bigInt* copyBI(bigInt *a)
 {
 	bigInt *c = bigIntLen(a->l);
 	c->s = a->s;
@@ -124,89 +121,108 @@ bigInt* copyBI(const bigInt *a)
 }
 
 //Displays bigInt in terminal
-void printBI(const bigInt *a)
+void printBI(bigInt *a)
 {
 	if(a->s)	//Check for negative sign
 		printf("-");
 	uint64_t c = a->l;
-	while(c) printf("%" PRIu64 "", a->n[--c]);	//Print one uint64_t at a time
+	while(c) printf("%ld", a->n[--c]);	//Print one uint64_t at a time
 }
 
 //Frees bigInt provided
-void deleteBI(bigInt *a)
+void deleteBI(bigInt **a)
 {
-	free(a->n);	//Always free uint64_t array first
-	free(a);	//Then you can free bigInt
+	free((*a)->n);	//Always free uint64_t array first
+	free(*a);	//Then you can free bigInt
+	*a = NULL;	//Make sure it doesn't point to anything!
 }
 
 //Checks for a > b
-uint8_t greater(const bigInt *a, const bigInt *b)
+uint8_t greater(bigInt *a, bigInt *b)
 {
+	//Check sign
 	if(a->s != b->s)
 		return a->s ? 0x00 : 0xFF;
+	//Check length
 	if(a->l != b->l)
 		return a->s ? (a->l < b->l ? 0xFF : 0x00) : (a->l > b->l ? 0xFF : 0x00);
+	//Compare piece by piece
 	uint64_t c = a->l - 1;
-	while(c && a->n[i] == b->n[i]) c--;
+	while(c && a->n[c] == b->n[c]) c--;
+	//Return results based on sign
 	if(a->s)
 		return a->n[c] < b->n[c] ? 0xFF : 0x00;
 	return a->n[c] > b->n[c] ? 0xFF : 0x00;
 }
 
 //Checks for a < b
-uint8_t lesser(const bigInt *a, const bigInt *b)
+uint8_t lesser(bigInt *a, bigInt *b)
 {
+	//Check for sign
 	if(a->s != b->s)
 		return b->s ? 0x00 : 0xFF;
+	//Check for length
 	if(a->l != b->l)
 		return a->s ? (a->l > b->l ? 0xFF : 0x00) : (a->l < b->l ? 0xFF : 0x00);
+	//Check piece by piece
 	uint64_t c = a->l-1;
-	while(c && a->n[i] == b->n[i]) c--;
+	while(c && a->n[c] == b->n[c]) c--;
+	//Return results based on sign
 	if(a->s)
 		return a->n[c] > b->n[c] ? 0xFF : 0x00;
 	return a->n[c] < b->n[c] ? 0xFF : 0x00;
 }
 
 //Checks for a == b
-uint8_t equal(const bigInt *a, const bigInt *b)
+uint8_t equal(bigInt *a, bigInt *b)
 {
+	//Check sign and length
 	if(a->s != b->s || a->l != b->l)
 		return 0x00;
+	//Check piece by piece and return results
 	uint64_t c = a->l-1;
-	while(c && a->n[i] == b->n[i]) c--;
+	while(c && a->n[c] == b->n[c]) c--;
 	return a->n[c] == b->n[c] ? 0xFF : 0x00;
 }
 
 //Checks for a >= b
-uint8_t greaterEqual(const bigInt *a, const bigInt *b)
+uint8_t greaterEqual(bigInt *a, bigInt *b)
 {
+	//Check sign
 	if(a->s != b->s)
 		return a->s ? 0x00 : 0xFF;
+	//Check length
 	if(a->l != b->l)
 		return a->s ? (a->l < b->l ? 0xFF : 0x00) : (a->l > b->l ? 0xFF : 0x00);
+	//Check piece by piece
 	uint64_t c = a->l-1;
-	while(c && a->n[i] == b->n[i]) c--;
+	while(c && a->n[c] == b->n[c]) c--;
+	//Return results based on sign
 	if(a->s)
 		return a->n[c] > b->n[c] ? 0x00 : 0xFF;
 	return a->n[c] < b->n[c] ? 0x00 : 0xFF;
 }
 
 //Checks for a <= b
-uint8_t lesserEqual(const bigInt *a, const bigInt *b)
+uint8_t lesserEqual(bigInt *a, bigInt *b)
 {
+	//Check sign
 	if(a->s != b->s)
 		return b->s ? 0x00 : 0xFF;
+	//Check length
 	if(a->l != b->l)
 		return a->s ? (a->l > b->l ? 0xFF : 0x00) : (a->l < b->l ? 0xFF : 0x00);
+	//Check piece by piece
 	uint64_t c = a->l-1;
-	while(c && a->n[i] == b->n[i]) c--;
+	while(c && a->n[c] == b->n[c]) c--;
+	//Return results based on sign
 	if(a->s)
 		return a->n[c] < b->n[c] ? 0x00 : 0xFF;
 	return a->n[c] > b->n[c] ? 0x00 : 0xFF;
 }
 
 //Checks for |a| comp |b|; Requires comparison function pointer
-uint8_t magComp(uint8_t (*f)(bigInt*, bigInt*), const bigInt *a, const bigInt *b)
+uint8_t magComp(uint8_t (*f)(bigInt*,bigInt*), bigInt *a, bigInt *b)
 {
 	//Save signs
 	uint8_t sa = a->s;
@@ -223,7 +239,7 @@ uint8_t magComp(uint8_t (*f)(bigInt*, bigInt*), const bigInt *a, const bigInt *b
 }
 
 //Returns a + b
-bigInt* add(const bigInt *a, const bigInt *b)
+bigInt* add(bigInt *a, bigInt *b)
 {
 	//return as is if a or b is 0
 	if(a->l < 2 && !a->n[0])
@@ -232,7 +248,7 @@ bigInt* add(const bigInt *a, const bigInt *b)
 		return copyBI(a);
 	bigInt *c, *s, *l;	//New, smaller, and bigger bigInt pointers
 	//Set poiters to smaller and larger bigInts
-	if(magComp(greater, a, b))
+	if(magComp(&greater, a, b))
 	{
 		s = a;
 		l = b;
@@ -273,7 +289,7 @@ bigInt* add(const bigInt *a, const bigInt *b)
 	else	//Perform subtraction algorithm
 	{
 		c->s = l->s;
-		//Subtract s from l
+		//Subtract s from l with overflow
 		for(i = 0; i < s->l; i++)
 		{
 			c->n[i] += l->n[i] - s->n[i];
@@ -293,13 +309,22 @@ bigInt* add(const bigInt *a, const bigInt *b)
 				c->n[i+1] -= 1;
 			}
 		}
-		//Find out how many cells are occupied
-		//Remove excess cells
 	}
+	//Find out how many cells are occupied
+	i = c->l;
+	while(!c->n[--i]);
+	//Remove excess cells
+	uint64_t* t = (uint64_t*) realloc(c->n, sizeof(uint64_t) * (i + 1));
+	if(!t)
+	{
+		printf("Out of memory! Excess cells could not be removed.");
+		return c;
+	}
+	c->n = t;
 	return c;
 }
-
-bigInt* subtract(const bigInt *a, const bigInt *b)
+/*
+bigInt* subtract(bigInt *a, bigInt *b)
 {
 	//return as is if subtracting 0
 	if(b->l < 2 && !b->n[0])
@@ -314,7 +339,7 @@ bigInt* subtract(const bigInt *a, const bigInt *b)
 	//alg goes here	
 }
 
-bigInt* multiply(const bigInt *a, const bigInt *b)
+bigInt* multiply(bigInt *a, bigInt *b)
 {
 	if(a->l < 2)
 	{
@@ -349,7 +374,7 @@ bigInt* multiply(const bigInt *a, const bigInt *b)
 
 }
 
-bigInt* divide(const bigInt *a, const bigInt *b)
+bigInt* divide(bigInt *a, bigInt *b)
 {
 	//spit out error if b is 0
 	if(b->l < 2 && !b->n[0])
@@ -369,7 +394,7 @@ bigInt* divide(const bigInt *a, const bigInt *b)
 	//alg goes here
 }
 
-bigInt* modulus(const bigInt *a, const bigInt *b)
+bigInt* modulus(bigInt *a, bigInt *b)
 {
 	bigInt* c;
 	//spit out error if b is 0
@@ -387,7 +412,7 @@ bigInt* modulus(const bigInt *a, const bigInt *b)
 	//alg goes here
 }
 
-bigInt* power(const bigInt *a, const bigInt *b)
+bigInt* power(bigInt *a, bigInt *b)
 {
 	bigInt* c;
 	//return 0 if power is less than 0
@@ -404,7 +429,7 @@ bigInt* power(const bigInt *a, const bigInt *b)
 	//alg goes here
 }
 
-bigInt* root(const bigInt *a, const bigInt *b)
+bigInt* root(bigInt *a, bigInt *b)
 {
 	bigInt* c;
 	//return 0 if root index less than 0
@@ -436,9 +461,9 @@ bigInt* root(const bigInt *a, const bigInt *b)
 	a->s = s;
 	//alg goes here
 }
-
+*/
 //Equivalent of a = a (op) b but without the memory leak it would incur
-bigInt* assignFirst(bigInt* (*f), bigInt *a, const bigInt *b)
+bigInt* assignFirst(bigInt* (*f)(bigInt*,bigInt*), bigInt *a, bigInt *b)
 {
 	//Atttempt operation; Check for allocation failure
 	bigInt *c = f(a, b);
@@ -447,7 +472,7 @@ bigInt* assignFirst(bigInt* (*f), bigInt *a, const bigInt *b)
 		printf("Function call failed!\nReturning original value.\n");
 		return a;
 	}
-	deleteBI(a);
+	deleteBI(&a);
 	a = c;
 	return a;
 }
